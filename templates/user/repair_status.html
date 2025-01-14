@@ -1,0 +1,61 @@
+<!-- Таблица заявок -->
+<table class="table table-custom">
+    <thead>
+        <tr>
+            <th>ID заявки</th>
+            <th>Тип заявки</th>
+            <th>ID элемента</th>
+            <th>Название элемента</th>
+            {% if request_type != 'repair' %}
+                <th>Количество</th> 
+            {% endif %}
+            <th>Описание/Причина</th>
+            <th>Статус</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for request in requests %}
+        <tr>
+            <td>{{ request.id }}</td>
+            <td>
+                {% if request.type == 'inventory' %}
+                    Заявка на инвентарь
+                {% elif request.type == 'repair' %}
+                    Заявка на ремонт
+                {% else %}
+                    Заявка на замену
+                {% endif %}
+            </td>
+            <td>{{ request.item_id }}</td>
+            <td>{{ request.item_name }}</td>
+            {% if request_type != 'repair' %}
+                <td>
+                    {% if request.quantity is not none %}
+                        {{ request.quantity }} шт.
+                    {% else %}
+                        —
+                    {% endif %}
+                </td> 
+            {% endif %}
+            <td>
+                {% if request.type == 'repair' %}
+                    {{ request.description }}
+                {% elif request.type == 'replacement' %}
+                    {{ request.reason }}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>
+                {% if request.status == 'одобрено' or request.status == 'в процессе' %}
+                    <span class="text-success">{{ request.status }}</span>
+                {% elif request.status == 'отклонено' %}
+                    <span class="text-danger">{{ request.status }}</span>
+                {% else %}
+                    <span class="text-warning">{{ request.status }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

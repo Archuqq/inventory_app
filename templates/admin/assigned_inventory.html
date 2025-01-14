@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Закрепленный инвентарь{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="header-section text-center mb-5">
+            <h2 class="display-4 mb-4">
+                <i class="fas fa-clipboard-list me-3"></i>
+                Закрепленный инвентарь
+            </h2>
+        </div>
+
+        <div class="card shadow-hover">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-custom fade-in-section">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-hashtag me-2"></i>ID</th>
+                                <th><i class="fas fa-box me-2"></i>Название</th>
+                                <th><i class="fas fa-sort-numeric-up me-2"></i>Количество</th>
+                                <th><i class="fas fa-info-circle me-2"></i>Статус</th>
+                                <th><i class="fas fa-user me-2"></i>Закреплен за</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in assigned_items %}
+                                <tr class="fade-in-section" data-animation-delay="{{ loop.index }}">
+                                    <td>{{ item.id }}</td>
+                                    <td>{{ item.name }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>
+                                        {% if item.status == 'новый' %}
+                                            <div class="status-badge status-approved">
+                                                <i class="fas fa-check-circle me-2"></i>
+                                                <span>Новый</span>
+                                            </div>
+                                        {% elif item.status == 'используемый' %}
+                                            <div class="status-badge status-pending">
+                                                <i class="fas fa-clock me-2"></i>
+                                                <span>Используемый</span>
+                                            </div>
+                                        {% elif item.status == 'сломанный' %}
+                                            <div class="status-badge status-rejected">
+                                                <i class="fas fa-times-circle me-2"></i>
+                                                <span>Сломанный</span>
+                                            </div>
+                                        {% else %}
+                                            <div class="status-badge status-pending">
+                                                <i class="fas fa-question-circle me-2"></i>
+                                                <span>{{ item.status }}</span>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-user-circle me-2"></i>
+                                            {{ item.username }} (ID: {{ item.user_id }})
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center">Нет закрепленного инвентаря.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Назад в панель управления
+            </a>
+        </div>
+    </div>
+{% endblock %}

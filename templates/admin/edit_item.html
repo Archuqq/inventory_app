@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Редактировать элемент инвентаря{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <h1 class="text-center mb-4">Редактировать элемент инвентаря (ID: {{ item.id }})</h1>
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card form-custom">
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="id" class="form-label">ID элемента:</label>
+                                <input type="text" id="id" name="id" value="{{ item.id }}" class="form-control" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Название:</label>
+                                <input type="text" id="name" name="name" value="{{ item.name }}" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="quantity" class="form-label">Количество:</label>
+                                <input type="number" id="quantity" name="quantity" value="{{ item.quantity }}" class="form-control" required>
+                            </div>
+                            <div class="mb-4">
+                                <label for="status" class="form-label">Статус:</label>
+                                <select name="status" id="status" class="form-control" required>
+                                    <option value="новый" {% if item.status == 'новый' %}selected{% endif %}>Новый</option>
+                                    <option value="используемый" {% if item.status == 'используемый' %}selected{% endif %}>Используемый</option>
+                                    <option value="сломанный" {% if item.status == 'сломанный' %}selected{% endif %}>Сломанный</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Обновить</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Назад в панель управления</a>
+        </div>
+    </div>
+{% endblock %}

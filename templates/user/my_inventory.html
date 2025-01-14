@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Мой инвентарь{% endblock %}
+
+{% block content %}
+<div class="container fade-in-section">
+    <div class="header-section text-center mb-5">
+        <h2 class="display-4 mb-4">
+            <i class="fas fa-clipboard-list me-3"></i>
+            Мой инвентарь
+        </h2>
+        <p class="lead text-muted">Просмотр закрепленного за вами инвентаря</p>
+    </div>
+
+    <div class="card shadow-hover">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-custom">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Название</th>
+                            <th>Количество</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inventory %}
+                        <tr class="fade-in-section" data-animation-delay="{{ loop.index }}">
+                            <td>{{ item.id }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>
+                                {% include 'includes/status_badge.html' %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('repair_request', item_id=item.id) }}" 
+                                       class="btn btn-outline-primary btn-sm"
+                                       data-bs-toggle="tooltip" 
+                                       title="Запросить ремонт">
+                                        <i class="fas fa-tools"></i>
+                                    </a>
+                                    <a href="{{ url_for('replacement_request', item_id=item.id) }}" 
+                                       class="btn btn-outline-warning btn-sm"
+                                       data-bs-toggle="tooltip" 
+                                       title="Запросить замену">
+                                        <i class="fas fa-exchange-alt"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <div class="alert alert-info mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    За вами не закреплено элементов инвентаря
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('user_dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Назад в панель управления
+        </a>
+    </div>
+</div>
+
+<script>
+    
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+</script>
+{% endblock %}

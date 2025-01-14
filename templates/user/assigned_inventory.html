@@ -1,0 +1,24 @@
+<!-- Обновляем отображение статуса -->
+<td>
+    {% if item.status == 'активен' %}
+        <div class="status-badge status-approved">
+            <i class="fas fa-check-circle"></i>
+            <span>Активен</span>
+        </div>
+    {% elif item.status == 'возвращен' %}
+        <div class="status-badge status-rejected">
+            <i class="fas fa-times-circle"></i>
+            <span>Возвращен</span>
+        </div>
+    {% elif item.status == 'сломанный' %}
+        <div class="status-badge status-rejected">
+            <i class="fas fa-times-circle"></i>
+            <span>Сломанный</span>
+        </div>
+    {% else %}
+        <div class="status-badge status-pending">
+            <i class="fas fa-clock"></i>
+            <span>В обработке</span>
+        </div>
+    {% endif %}
+</td> 

@@ -1,0 +1,21 @@
+{% if item.status == 'новый' %}
+    <div class="status-badge status-approved">
+        <i class="fas fa-check-circle me-2"></i>
+        <span>Новый</span>
+    </div>
+{% elif item.status == 'используемый' %}
+    <div class="status-badge status-pending">
+        <i class="fas fa-clock me-2"></i>
+        <span>Используемый</span>
+    </div>
+{% elif item.status == 'сломанный' %}
+    <div class="status-badge status-rejected">
+        <i class="fas fa-times-circle me-2"></i>
+        <span>Сломанный</span>
+    </div>
+{% else %}
+    <div class="status-badge status-pending">
+        <i class="fas fa-question-circle me-2"></i>
+        <span>{{ item.status }}</span>
+    </div>
+{% endif %} 

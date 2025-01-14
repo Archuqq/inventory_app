@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Заявка на ремонт{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h2 class="text-center mb-4">Заявка на ремонт</h2>
+                        <form method="POST">
+                            <div class="mb-4">
+                                <label for="item_id" class="form-label fw-bold">Выберите элемент:</label>
+                                <select id="item_id" name="item_id" class="form-control select2" required>
+                                    <option value="" disabled selected>Выберите элемент</option>
+                                    {% for item in inventory %}
+                                        <option value="{{ item.id }}">{{ item.name }} (ID: {{ item.id }}, Количество: {{ item.quantity }})</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">Начните вводить название элемента или ID для поиска.</small>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="description" class="form-label fw-bold">Описание проблемы:</label>
+                                <textarea id="description" name="description" class="form-control" rows="3" required></textarea>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-check-circle me-2"></i>Отправить заявку
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('user_dashboard') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Назад в панель управления
+            </a>
+        </div>
+    </div>
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+    <script>
+        $(document).ready(function() {
+            $('.select2').select2({
+                placeholder: "Начните вводить название элемента или ID",
+                allowClear: true
+            });
+
+            $('#item_id').on('input', function() {
+                const searchValue = this.value.toLowerCase();
+                const options = $('#item_id option');
+
+                options.each(function() {
+                    const text = $(this).text().toLowerCase();
+                    if (text.indexOf(searchValue) > -1) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+        });
+    </script>
+
+    <style>
+        .card {
+            border: none;
+            border-radius: 15px;
+        }
+
+        .shadow-sm {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-control-lg {
+            font-size: 1.1rem;
+            padding: 12px;
+        }
+
+        .btn-lg {
+            font-size: 1.1rem;
+            padding: 12px;
+        }
+
+        .btn i {
+            margin-right: 8px;
+        }
+
+        .form-text {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .select2-container--default .select2-selection--single {
+            height: 48px;
+            padding: 10px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 46px;
+        }
+
+        .select2-dropdown {
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .select2-results__option {
+            padding: 10px;
+            font-size: 1rem;
+        }
+
+        .select2-results__option--highlighted {
+            background-color: #f8f9fa;
+            color: #000;
+        }
+    </style>
+{% endblock %}

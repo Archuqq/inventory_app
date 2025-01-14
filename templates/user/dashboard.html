@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Панель пользователя{% endblock %}
+
+{% block content %}
+    <div class="container fade-in-section">
+        <div class="header-section text-center mb-5">
+            <h2 class="display-4 mb-4">
+                <i class="fas fa-user-circle me-3"></i>
+                Личный кабинет
+            </h2>
+            <p class="lead text-muted">Управление вашим инвентарем и заявками</p>
+        </div>
+
+        <div class="row g-4">
+            {% for card in user_cards %}
+            <div class="col-md-4">
+                <div class="card shadow-hover fade-in-section"
+                     data-animation-delay="{{ loop.index }}">
+                    <div class="card-body text-center p-4">
+                        <div class="icon-circle mb-3 mx-auto">
+                            <i class="{{ card.icon }} fa-2x"></i>
+                        </div>
+                        <h3 class="card-title h5 mb-3">{{ card.title }}</h3>
+                        <p class="card-text text-muted mb-4">{{ card.description }}</p>
+                        <a href="{{ card.url }}" class="btn btn-primary w-100">
+                            <i class="{{ card.icon }} me-2"></i>{{ card.button_text }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}

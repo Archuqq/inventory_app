@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Статус заявок{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="header-section text-center mb-5">
+            <h2 class="display-4 mb-4">
+                <i class="fas fa-clipboard-list me-3"></i>
+                Статус заявок
+            </h2>
+            <p class="lead text-muted">Отслеживайте статус ваших заявок на инвентарь, ремонт и замену</p>
+        </div>
+
+        <div class="card shadow-hover mb-4">
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('request_status') }}" class="row align-items-end">
+                    <div class="col-md-8">
+                        <label for="request_type" class="form-label">
+                            <i class="fas fa-filter me-2"></i>Тип заявки
+                        </label>
+                        <select class="form-select form-select-lg" id="request_type" name="request_type">
+                            <option value="all" {% if selected_request_type == 'all' %}selected{% endif %}>Все заявки</option>
+                            <option value="inventory" {% if selected_request_type == 'inventory' %}selected{% endif %}>Заявки на инвентарь</option>
+                            <option value="repair" {% if selected_request_type == 'repair' %}selected{% endif %}>Заявки на ремонт</option>
+                            <option value="replacement" {% if selected_request_type == 'replacement' %}selected{% endif %}>Заявки на замену</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-search me-2"></i>Применить фильтр
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-hover">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-hashtag me-2"></i>ID</th>
+                                <th><i class="fas fa-tag me-2"></i>Тип</th>
+                                <th><i class="fas fa-box me-2"></i>ID элемента</th>
+                                <th><i class="fas fa-cube me-2"></i>Название</th>
+                                <th><i class="fas fa-sort-numeric-up me-2"></i>Количество</th>
+                                <th><i class="fas fa-info-circle me-2"></i>Описание</th>
+                                <th><i class="fas fa-check-circle me-2"></i>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in requests %}
+                            <tr>
+                                <td>{{ request.id }}</td>
+                                <td>
+                                    <span class="badge request-type-badge">
+                                        {% if request.type == 'inventory' %}
+                                            <i class="fas fa-boxes me-1"></i>Инвентарь
+                                        {% elif request.type == 'repair' %}
+                                            <i class="fas fa-tools me-1"></i>Ремонт
+                                        {% else %}
+                                            <i class="fas fa-exchange-alt me-1"></i>Замена
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>{{ request.item_id }}</td>
+                                <td>{{ request.item_name }}</td>
+                                <td>
+                                    {% if request.quantity is not none %}
+                                        <span class="badge bg-info">{{ request.quantity }} шт.</span>
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if request.type == 'repair' %}
+                                        {{ request.description }}
+                                    {% elif request.type == 'replacement' %}
+                                        {{ request.reason }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if request.status == 'одобрено' %}
+                                        <div class="status-badge status-approved">
+                                            <i class="fas fa-check-circle"></i>
+                                            <span>Одобрено</span>
+                                        </div>
+                                    {% elif request.status == 'отклонено' %}
+                                        <div class="status-badge status-rejected">
+                                            <i class="fas fa-times-circle"></i>
+                                            <span>Отклонено</span>
+                                        </div>
+                                    {% else %}
+                                        <div class="status-badge status-pending">
+                                            <i class="fas fa-clock"></i>
+                                            <span>Ожидание</span>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('user_dashboard') }}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-arrow-left me-2"></i>Назад в панель управления
+            </a>
+        </div>
+    </div>
+
+    <style>
+        .header-section {
+            background: linear-gradient(45deg, #6366f1, #8b5cf6);
+            color: #ffffff;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .request-type-badge {
+            background: linear-gradient(45deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .status-approved {
+            background: linear-gradient(45deg, #22c55e, #16a34a);
+            color: white;
+            box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+        }
+
+        .status-rejected {
+            background: linear-gradient(45deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+        }
+
+        .status-pending {
+            background: linear-gradient(45deg, #94a3b8, #64748b);
+            color: white;
+            box-shadow: 0 2px 4px rgba(148, 163, 184, 0.2);
+        }
+
+        .status-badge i {
+            font-size: 0.875rem;
+        }
+
+        .form-select {
+            border: 2px solid #e1e8f0;
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-size: 1rem;
+        }
+
+        .form-select:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+        }
+
+        .table-custom td {
+            vertical-align: middle;
+            padding: 1rem;
+        }
+    </style>
+{% endblock %}
