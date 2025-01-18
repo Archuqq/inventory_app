@@ -45,7 +45,7 @@ flask db upgrade
 
 ### 5. Создание администратора:
 ```bash
-flask add-user admin password admin
+flask add-user name password role
 ```
 
 ### 6. Запуск сервера:
