@@ -75,6 +75,9 @@ inventory_app/<br>
 │ ├── base.html<br>
 │ ├── index.html<br>
 │ └── user.html<br>
+│ └──admin/<br>
+│ └──user/<br>
+│ └──includes/<br>
 ├── static/<br>
 │ ├── css/<br>
 │ ├── js/<br>
