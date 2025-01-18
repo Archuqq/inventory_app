@@ -78,7 +78,6 @@ inventory_app/<br>
 ├── static/<br>
 │ ├── css/<br>
 │ ├── js/<br>
-│ └── images/<br>
 
 ## Демонстрация работы
 ------------
