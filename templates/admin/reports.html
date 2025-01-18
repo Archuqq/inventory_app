@@ -1,147 +1,256 @@
 {% extends "base.html" %}
 
-{% block title %}Отчёты{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="header-section text-center mb-5">
-        <h2 class="display-4 mb-4">
-            <i class="fas fa-chart-bar me-3"></i>
-            Отчёты
-        </h2>
-        <p class="lead text-muted">Просмотр и анализ данных об инвентаре</p>
-    </div>
-
-    
-    <div class="card shadow-hover mb-4">
+<div class="container py-4">
+    <!-- Фильтры -->
+    <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ url_for('reports') }}" class="form-custom">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label for="report_type" class="form-label">
-                            <i class="fas fa-file-alt me-2"></i>Тип отчёта
-                        </label>
-                        <select id="report_type" name="type" class="form-select">
-                            <option value="usage" {% if report_type == 'usage' %}selected{% endif %}>Использование инвентаря</option>
-                            <option value="status" {% if report_type == 'status' %}selected{% endif %}>Состояние инвентаря</option>
-                            <option value="purchases" {% if report_type == 'purchases' %}selected{% endif %}>План закупок</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-4">
-                        {% if report_type in ['usage', 'status'] %}
-                        <label for="status" class="form-label">
-                            <i class="fas fa-filter me-2"></i>Статус
-                        </label>
-                        <select id="status" name="status" class="form-select">
-                            <option value="all" {% if filter_status == 'all' %}selected{% endif %}>Все</option>
-                            <option value="новый" {% if filter_status == 'новый' %}selected{% endif %}>Новый</option>
-                            <option value="используемый" {% if filter_status == 'используемый' %}selected{% endif %}>Используемый</option>
-                            <option value="сломанный" {% if filter_status == 'сломанный' %}selected{% endif %}>Сломанный</option>
-                        </select>
-                        {% elif report_type == 'purchases' %}
-                        <label for="supplier" class="form-label">
-                            <i class="fas fa-truck me-2"></i>Поставщик
-                        </label>
-                        <select id="supplier" name="supplier" class="form-select">
-                            <option value="all" {% if filter_supplier == 'all' %}selected{% endif %}>Все поставщики</option>
-                            {% for supplier in suppliers %}
-                            <option value="{{ supplier }}" {% if filter_supplier == supplier %}selected{% endif %}>{{ supplier }}</option>
-                            {% endfor %}
-                        </select>
-                        {% endif %}
-                    </div>
-
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-search me-2"></i>Применить фильтры
-                        </button>
-                    </div>
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Тип отчета</label>
+                    <select name="type" class="form-select" onchange="this.form.submit()">
+                        <option value="status" {% if report_type == 'status' %}selected{% endif %}>Отчеты о состоянии</option>
+                        <option value="usage" {% if report_type == 'usage' %}selected{% endif %}>Использование инвентаря</option>
+                        <option value="inventory" {% if report_type == 'inventory' %}selected{% endif %}>Состояние инвентаря</option>
+                        <option value="purchases" {% if report_type == 'purchases' %}selected{% endif %}>План закупок</option>
+                    </select>
                 </div>
+                
+                {% if report_type in ['status', 'usage', 'inventory'] %}
+                <div class="col-md-4">
+                    <label class="form-label">Статус</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="all" {% if filter_status == 'all' %}selected{% endif %}>Все статусы</option>
+                        <option value="active" {% if filter_status == 'active' %}selected{% endif %}>Активный</option>
+                        <option value="broken" {% if filter_status == 'broken' %}selected{% endif %}>Сломанный</option>
+                    </select>
+                </div>
+                {% endif %}
+                
+                {% if report_type == 'purchases' %}
+                <div class="col-md-4">
+                    <label class="form-label">Поставщик</label>
+                    <select name="supplier" class="form-select" onchange="this.form.submit()">
+                        <option value="all">Все поставщики</option>
+                        {% for supplier in suppliers %}
+                        <option value="{{ supplier }}" {% if filter_supplier == supplier %}selected{% endif %}>
+                            {{ supplier }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
             </form>
         </div>
     </div>
 
-    
-    <div class="card shadow-hover">
+    <!-- Отчеты о состоянии -->
+    {% if report_type == 'status' %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                Отчеты о состоянии инвентаря
+            </h5>
+        </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-custom fade-in-section">
+                <table class="table table-hover align-middle">
                     <thead>
                         <tr>
-                            <th><i class="fas fa-hashtag me-2"></i>ID</th>
-                            <th><i class="fas fa-box me-2"></i>Название</th>
-                            {% if report_type != 'purchases' %}
-                            <th><i class="fas fa-sort-numeric-up me-2"></i>Количество</th>
-                            <th><i class="fas fa-info-circle me-2"></i>Статус</th>
-                            {% if report_type == 'usage' %}
-                            <th><i class="fas fa-user me-2"></i>Назначено</th>
-                            {% endif %}
-                            {% else %}
-                            <th><i class="fas fa-ruble-sign me-2"></i>Цена</th>
-                            <th><i class="fas fa-truck me-2"></i>Поставщик</th>
-                            {% endif %}
+                            <th>Дата</th>
+                            <th>Пользователь</th>
+                            <th>Инвентарь</th>
+                            <th>Количество</th>
+                            <th>Статус</th>
+                            <th>Причина</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% if report_type == 'usage' %}
-                            {% for item in inventory_usage %}
-                            <tr class="fade-in-section" data-animation-delay="{{ loop.index }}">
-                                <td>{{ item.id }}</td>
-                                <td>{{ item.name }}</td>
-                                <td>{{ item.quantity }}</td>
-                                <td>
-                                    {% include 'includes/status_badge.html' %}
-                                </td>
-                                <td>
-                                    {% if item.assigned_to %}
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-user-circle me-2"></i>
-                                        {{ item.username }}
-                                    </div>
-                                    {% else %}
-                                    <span class="text-muted">
-                                        <i class="fas fa-minus-circle me-2"></i>Не назначено
-                                    </span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% elif report_type == 'status' %}
-                            {% for item in inventory_status %}
-                            <tr class="fade-in-section" data-animation-delay="{{ loop.index }}">
-                                <td>{{ item.id }}</td>
-                                <td>{{ item.name }}</td>
-                                <td>{{ item.quantity }}</td>
-                                <td>
-                                    {% include 'includes/status_badge.html' %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        {% elif report_type == 'purchases' %}
-                            {% for purchase in purchases %}
-                            <tr class="fade-in-section" data-animation-delay="{{ loop.index }}">
-                                <td>{{ purchase.id }}</td>
-                                <td>{{ purchase.item_name }}</td>
-                                <td>{{ purchase.price }} ₽</td>
-                                <td>{{ purchase.supplier }}</td>
-                            </tr>
-                            {% endfor %}
-                        {% endif %}
+                        {% for report, username, item_name, item_status in broken_reports %}
+                        <tr>
+                            <td>{{ report.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ username }}</td>
+                            <td>{{ item_name }}</td>
+                            <td>{{ report.quantity }} шт.</td>
+                            <td>
+                                <span class="badge bg-danger">{{ item_status }}</span>
+                            </td>
+                            <td>{{ report.reason }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-2x mb-3 d-block"></i>
+                                Отчетов о состоянии пока нет
+                            </td>
+                        </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+    {% endif %}
 
-            <div class="text-center mt-4">
-                <a href="{{ url_for('export_reports', type=report_type, status=filter_status, supplier=filter_supplier) }}" 
-                   class="btn btn-success me-2">
-                    <i class="fas fa-file-export me-2"></i>Экспорт в CSV
-                </a>
-                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Назад в панель управления
-                </a>
+    <!-- Использование инвентаря -->
+    {% if report_type == 'usage' %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-box text-primary me-2"></i>
+                Использование инвентаря
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Название</th>
+                            <th>Количество</th>
+                            <th>Статус</th>
+                            <th>Пользователь</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inventory_usage %}
+                        <tr>
+                            <td>{{ item.id }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>
+                                <span class="badge {% if item.status == 'active' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ item.status }}
+                                </span>
+                            </td>
+                            <td>{{ item.username }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
+    {% endif %}
+
+    <!-- Состояние инвентаря -->
+    {% if report_type == 'inventory' %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-clipboard-list text-success me-2"></i>
+                Состояние инвентаря
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Название</th>
+                            <th>Количество</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inventory_status %}
+                        <tr>
+                            <td>{{ item.id }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>
+                                <span class="badge {% if item.status == 'active' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ item.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- План закупок -->
+    {% if report_type == 'purchases' %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-shopping-cart text-info me-2"></i>
+                План закупок
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Название</th>
+                            <th>Статус</th>
+                            <th>Дата</th>
+                            <th>Пользователь</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <tr>
+                            <td>{{ report.id }}</td>
+                            <td>{{ report.name }}</td>
+                            {% if report_type != 'purchases' %}
+                                <td>{{ report.quantity }}</td>
+                            {% endif %}
+                            <td>{{ report.status }}</td>
+                            <td>{{ report.created_at.strftime('%d.%m.%Y') }}</td>
+                            <td>{{ report.user.username }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    {% if report.status == 'на рассмотрении' %}
+                                        <form action="{{ url_for('approve_request', request_id=report.id) }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </form>
+                                        <form action="{{ url_for('reject_request', request_id=report.id) }}" method="POST" style="display: inline;">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 10px;
+}
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,.125);
+}
+.table th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+.badge {
+    padding: 0.5em 0.8em;
+    font-weight: 500;
+}
+</style>
 {% endblock %}

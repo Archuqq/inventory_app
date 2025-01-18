@@ -1,7 +1,7 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, make_response
+from flask import Flask, render_template, redirect, url_for, request, flash, make_response, jsonify
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask_sqlalchemy import SQLAlchemy
-from models import db, User, InventoryItem, PurchasePlan, Request, RepairRequest, PurchaseOrder, ReplacementRequest
+from models import db, User, InventoryItem, PurchasePlan, Request, RepairRequest, PurchaseOrder, ReplacementRequest, AssignmentHistory, Report
 from flask_migrate import Migrate
 import csv
 import io
@@ -10,6 +10,10 @@ import logging
 import requests
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy import inspect
+from sqlalchemy import text
+import os
+import shutil
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -23,7 +27,6 @@ migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Настройка логирования
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -33,11 +36,23 @@ logger = logging.getLogger(__name__)
 @click.argument("role")
 def add_user(username, password, role):
     """Добавить пользователя в базу данных."""
-    with app.app_context():
-        user = User(username=username, password=password, role=role)
-        db.session.add(user)
-        db.session.commit()
-    print(f"User {username} added successfully.")
+    try:
+        with app.app_context():
+            
+            inspector = inspect(db.engine)
+            if 'user' not in inspector.get_table_names():
+                
+                db.create_all()
+                print("Таблицы созданы.")
+            
+            
+            user = User(username=username, password=password, role=role)
+            db.session.add(user)
+            db.session.commit()
+            print(f"Пользователь {username} успешно добавлен.")
+    except Exception as e:
+        print(f"Ошибка при добавлении пользователя: {str(e)}")
+        db.session.rollback()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -193,50 +208,44 @@ def change_role(user_id):
 @login_required
 def delete_user(user_id):
     if current_user.role != 'admin':
+        flash('У вас нет прав для выполнения этого действия', 'danger')
         return redirect(url_for('index'))
-    
-    if user_id == current_user.id:
-        flash('Вы не можете удалить свой собственный аккаунт!', 'error')
-        return redirect(url_for('manage_users'))
     
     try:
         user = User.query.get_or_404(user_id)
         
         
-        Request.query.filter_by(user_id=user_id).delete()
-        RepairRequest.query.filter_by(user_id=user_id).delete()
-        ReplacementRequest.query.filter_by(user_id=user_id).delete()
+        if user.id == current_user.id:
+            flash('Вы не можете удалить свой собственный аккаунт', 'danger')
+            return redirect(url_for('manage_users'))
         
         
-        assigned_items = InventoryItem.query.filter_by(assigned_to=user_id).all()
+        RepairRequest.query.filter_by(user_id=user.id).delete()
+        ReplacementRequest.query.filter_by(user_id=user.id).delete()
+        Report.query.filter_by(user_id=user.id).delete()
+        Request.query.filter_by(user_id=user.id).delete()
+        AssignmentHistory.query.filter(
+            (AssignmentHistory.user_id == user.id) | 
+            (AssignmentHistory.admin_id == user.id)
+        ).delete()
         
-        for assigned_item in assigned_items:
-            
-            existing_item = InventoryItem.query.filter_by(
-                name=assigned_item.name,
-                assigned_to=None,
-                is_hidden=False
-            ).first()
-            
-            if existing_item:
-                
-                existing_item.quantity += assigned_item.quantity
-                
-                db.session.delete(assigned_item)
-            else:
-                
-                assigned_item.assigned_to = None
-                assigned_item.is_hidden = False
+        
+        InventoryItem.query.filter_by(assigned_to=user.id).update({
+            'assigned_to': None,
+            'status': 'новый'
+        })
         
         
         db.session.delete(user)
         db.session.commit()
         
-        flash(f'Пользователь {user.username} успешно удален.', 'success')
+        flash('Пользователь успешно удален', 'success')
+        
     except Exception as e:
         db.session.rollback()
-        flash(f'Ошибка при удалении пользователя: {str(e)}', 'error')
-    
+        flash(f'Произошла ошибка при удалении пользователя: {str(e)}', 'danger')
+        print(f"Error in delete_user: {str(e)}")
+        
     return redirect(url_for('manage_users'))
 
 @app.route('/admin/add_item', methods=['GET', 'POST'])
@@ -406,78 +415,48 @@ def reports():
         return redirect(url_for('index'))
 
     try:
-        report_type = request.args.get('type', 'usage')
-        filter_status = request.args.get('status', 'all')
-        filter_supplier = request.args.get('supplier', 'all')
+        report_type = request.args.get('type', 'status')
 
-        if report_type in ['usage', 'inventory_usage']:
+        if report_type == 'status':
+            broken_reports = db.session.query(
+                Report,
+                User.username,
+                InventoryItem.name.label('item_name')
+            ).join(
+                User, Report.user_id == User.id
+            ).join(
+                InventoryItem, Report.inventory_id == InventoryItem.id
+            ).filter(
+                Report.report_type == 'status'
+            ).order_by(
+                Report.created_at.desc()
+            ).all()
             
-            query = db.session.query(
+            return render_template(
+                'admin/reports/status_reports.html',
+                broken_reports=broken_reports
+            )
+
+        elif report_type == 'usage':
+            inventory_usage = db.session.query(
                 InventoryItem.id,
                 InventoryItem.name,
                 InventoryItem.quantity,
                 InventoryItem.status,
-                InventoryItem.assigned_to,
                 User.username
-            ).outerjoin(
+            ).join(
                 User,
                 InventoryItem.assigned_to == User.id
             ).filter(
                 InventoryItem.assigned_to.isnot(None)
-            )
-
-            if filter_status != 'all':
-                query = query.filter(InventoryItem.status == filter_status)
-
-            inventory_usage = query.all()
-            
-            
-            inventory_usage_display = []
-            for item in inventory_usage:
-                username = item.username if item.username else 'Удалённый пользователь'
-                
-                inventory_usage_display.append({
-                    'id': item.id,
-                    'name': item.name,
-                    'quantity': item.quantity,
-                    'status': item.status,
-                    'assigned_to': item.assigned_to,
-                    'username': username
-                })
-            
-            return render_template(
-                'admin/reports.html',
-                report_type='usage',
-                inventory_usage=inventory_usage_display,
-                filter_status=filter_status
-            )
-        
-        elif report_type in ['status', 'inventory_status']:
-            inventory_status = InventoryItem.query.filter(
-                InventoryItem.is_hidden == False
             ).all()
             
-            return render_template(
-                'admin/reports.html',
-                report_type='status',
-                inventory_status=inventory_status,
-                filter_status=filter_status
-            )
+            return render_template('admin/reports/usage_reports.html', inventory_usage=inventory_usage)
         
-        elif report_type in ['purchases', 'purchase_plan']:
-            purchase_plans = PurchasePlan.query.all()
-            suppliers = db.session.query(PurchasePlan.supplier).distinct().all()
-            suppliers = [supplier[0] for supplier in suppliers]
-            
-            return render_template(
-                'admin/reports.html',
-                report_type='purchases',
-                purchases=purchase_plans,
-                suppliers=suppliers,
-                filter_supplier=filter_supplier,
-                filter_status=filter_status
-            )
-        
+        elif report_type == 'purchases':
+            purchases = PurchasePlan.query.all()
+            return render_template('admin/reports/purchase_reports.html', purchases=purchases)
+
         else:
             flash('Неизвестный тип отчета', 'error')
             return redirect(url_for('admin_dashboard'))
@@ -486,6 +465,8 @@ def reports():
         print(f"Ошибка в reports: {str(e)}")  
         flash(f'Произошла ошибка при формировании отчета: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
+
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/reports/export')
 @login_required
@@ -535,90 +516,85 @@ def export_reports():
     response.headers['Content-type'] = 'text/csv'
     return response
 
-@app.route('/user/dashboard')
+@app.route('/user_dashboard')
 @login_required
 def user_dashboard():
-    if current_user.role != 'admin':
-        user_cards = [
-            {
-                'title': 'Просмотр инвентаря',
-                'description': 'Просмотр доступного инвентаря',
-                'icon': 'fas fa-boxes',
-                'url': url_for('view_inventory'),
-                'button_text': 'Просмотреть'
-            },
-            {
-                'title': 'Мой инвентарь',
-                'description': 'Просмотр закрепленного инвентаря',
-                'icon': 'fas fa-clipboard-list',
-                'url': url_for('my_inventory'),
-                'button_text': 'Просмотреть'
-            },
-            {
-                'title': 'Запросить элемент',
-                'description': 'Создание заявки на получение инвентаря',
-                'icon': 'fas fa-hand-pointer',
-                'url': url_for('request_item'),
-                'button_text': 'Запросить'
-            },
-            {
-                'title': 'Запросить ремонт',
-                'description': 'Создание заявки на ремонт',
-                'icon': 'fas fa-wrench',
-                'url': url_for('repair_request'),
-                'button_text': 'Запросить ремонт'
-            },
-            {
-                'title': 'Запросить замену',
-                'description': 'Создание заявки на замену',
-                'icon': 'fas fa-exchange-alt',
-                'url': url_for('replacement_request'),
-                'button_text': 'Запросить замену'
-            },
-            {
-                'title': 'Статус заявок',
-                'description': 'Просмотр статуса ваших заявок',
-                'icon': 'fas fa-clipboard-check',
-                'url': url_for('request_status'),
-                'button_text': 'Просмотреть статус'
-            }
-        ]
-        return render_template('user/dashboard.html', user_cards=user_cards)
+    if current_user.role != 'user':
+        return redirect(url_for('admin_dashboard'))
+    
+    
+    assigned_inventory = InventoryItem.query.filter_by(
+        assigned_to=current_user.id,
+        is_hidden=False
+    ).all()
+    
+    user_cards = [
+        {
+            'title': 'Просмотр инвентаря',
+            'description': 'Просмотр доступного инвентаря',
+            'icon': 'fas fa-boxes',
+            'url': url_for('view_inventory'),
+            'button_text': 'Просмотреть'
+        },
+        {
+            'title': 'Мой инвентарь',
+            'description': 'Просмотр закрепленного инвентаря',
+            'icon': 'fas fa-clipboard-list',
+            'url': url_for('my_inventory'),
+            'button_text': 'Просмотреть'
+        },
+        {
+            'title': 'Запросить элемент',
+            'description': 'Создание заявки на получение инвентаря',
+            'icon': 'fas fa-hand-pointer',
+            'url': url_for('request_item'),
+            'button_text': 'Запросить'
+        },
+        {
+            'title': 'Запросить ремонт',
+            'description': 'Создание заявки на ремонт',
+            'icon': 'fas fa-wrench',
+            'url': url_for('repair_request'),
+            'button_text': 'Запросить ремонт'
+        },
+        {
+            'title': 'Запросить замену',
+            'description': 'Создание заявки на замену',
+            'icon': 'fas fa-exchange-alt',
+            'url': url_for('replacement_request'),
+            'button_text': 'Запросить замену'
+        },
+        {
+            'title': 'Статус заявок',
+            'description': 'Просмотр статуса ваших заявок',
+            'icon': 'fas fa-clipboard-check',
+            'url': url_for('request_status'),
+            'button_text': 'Просмотреть статус'
+        }
+    ]
+    
+    return render_template(
+        'user/dashboard.html',
+        assigned_inventory=assigned_inventory,
+        user_cards=user_cards
+    )
 
 @app.route('/user/view_inventory')
 @login_required
 def view_inventory():
     if current_user.role != 'user':
         return redirect(url_for('index'))
-    
+        
     try:
         
-        items_to_hide = InventoryItem.query.filter(
-            InventoryItem.quantity <= 0,
-            InventoryItem.is_hidden == False
-        ).all()
-        
-        for item in items_to_hide:
-            item.is_hidden = True
-        
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Ошибка при обновлении элементов: {str(e)}', 'error')
-        
-        
-        inventory = InventoryItem.query.filter(
+        available_items = InventoryItem.query.filter(
             InventoryItem.is_hidden == False,
             InventoryItem.quantity > 0,
             InventoryItem.assigned_to == None  
         ).all()
-        
-        return render_template('user/inventory.html', inventory=inventory)
-        
+        return render_template('user/inventory.html', inventory=available_items)
     except Exception as e:
-        db.session.rollback()
-        flash(f'Произошла ошибка: {str(e)}', 'error')
+        flash(f'Произошла ошибка при загрузке инвентаря: {str(e)}', 'error')
         return redirect(url_for('user_dashboard'))
 
 @app.route('/admin/watch_inventory')
@@ -629,32 +605,14 @@ def watch_inventory():
     
     try:
         
-        items_to_hide = InventoryItem.query.filter(
-            InventoryItem.quantity <= 0,
-            InventoryItem.is_hidden == False
-        ).all()
-        
-        for item in items_to_hide:
-            item.is_hidden = True
-        
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Ошибка при обновлении элементов: {str(e)}', 'error')
-        
-        
         inventory = InventoryItem.query.filter(
             InventoryItem.is_hidden == False,
-            InventoryItem.assigned_to == None,
-            InventoryItem.quantity > 0
+            InventoryItem.quantity > 0,
+            InventoryItem.assigned_to == None  
         ).all()
-        
         return render_template('admin/inventory.html', inventory=inventory)
-        
     except Exception as e:
-        db.session.rollback()
-        flash(f'Произошла ошибка: {str(e)}', 'error')
+        flash(f'Произошла ошибка при загрузке инвентаря: {str(e)}', 'error')
         return redirect(url_for('admin_dashboard'))
 
 @app.route('/user/request_item', methods=['GET', 'POST'])
@@ -1089,17 +1047,24 @@ def reject_repair_request(request_id):
 def assigned_inventory():
     if current_user.role != 'admin':
         return redirect(url_for('index'))
-
-    assigned_items = db.session.query(
-        InventoryItem.id,
-        InventoryItem.name,
-        InventoryItem.quantity,
-        InventoryItem.status,
-        User.id.label('user_id'),  
-        User.username
-    ).join(User, InventoryItem.assigned_to == User.id).all()
-
-    return render_template('admin/assigned_inventory.html', assigned_items=assigned_items)
+        
+    try:
+        assigned_items = db.session.query(
+            InventoryItem.id,
+            InventoryItem.name,
+            InventoryItem.quantity,
+            User.username
+        ).join(
+            User,
+            InventoryItem.assigned_to == User.id
+        ).filter(
+            InventoryItem.assigned_to.isnot(None)
+        ).all()
+        
+        return render_template('admin/assigned_inventory.html', assigned_items=assigned_items)
+    except Exception as e:
+        flash(f'Произошла ошибка при загрузке назначенного инвентаря: {str(e)}', 'error')
+        return redirect(url_for('admin_dashboard'))
 
 @app.route('/user/replacement_request', methods=['GET', 'POST'])
 @login_required
@@ -1232,19 +1197,65 @@ def delete_item(item_id):
     
     return redirect(url_for('watch_inventory'))
 
-@app.route('/user/my_inventory')
+@app.route('/my_inventory')
 @login_required
 def my_inventory():
-    if current_user.role != 'user':
-        return redirect(url_for('index'))
-    
-    
-    inventory = InventoryItem.query.filter_by(
-        assigned_to=current_user.id,
-        is_hidden=False
-    ).all()
-    
-    return render_template('user/my_inventory.html', inventory=inventory)
+    try:
+        inventory = db.session.query(
+            InventoryItem.id,
+            InventoryItem.name,
+            InventoryItem.quantity
+        ).filter(
+            InventoryItem.assigned_to == current_user.id,
+            InventoryItem.is_hidden == False
+        ).all()
+        
+        return render_template('user/my_inventory.html', inventory=inventory)
+    except Exception as e:
+        flash(f'Произошла ошибка при загрузке инвентаря: {str(e)}', 'error')
+        return redirect(url_for('user_dashboard'))
+
+@app.route('/return_item/<int:item_id>', methods=['POST'])
+@login_required
+def return_item(item_id):
+    try:
+        quantity = int(request.form.get('quantity', 1))
+        item = InventoryItem.query.get_or_404(item_id)
+        
+        
+        if item.assigned_to != current_user.id:
+            flash('У вас нет прав на возврат этого предмета', 'error')
+            return redirect(url_for('my_inventory'))
+            
+        if quantity > item.quantity:
+            flash('Количество для возврата превышает доступное', 'error')
+            return redirect(url_for('my_inventory'))
+            
+        if quantity == item.quantity:
+            
+            item.assigned_to = None
+            item.status = 'новый'
+        else:
+            
+            item.quantity -= quantity
+            
+            
+            new_item = InventoryItem(
+                name=item.name,
+                quantity=quantity,
+                status='новый',
+                assigned_to=None
+            )
+            db.session.add(new_item)
+            
+        db.session.commit()
+        flash('Инвентарь успешно возвращен', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Произошла ошибка при возврате инвентаря: {str(e)}', 'error')
+        
+    return redirect(url_for('my_inventory'))
 
 def init_db():
     with app.app_context():
@@ -1258,6 +1269,310 @@ def init_db():
         
         db.create_all()
 
+@app.cli.command("reset-db")
+def reset_db():
+    """Полный сброс базы данных."""
+    try:
+        with app.app_context():
+            
+            db.drop_all()
+            
+            db.create_all()
+            print("База данных успешно сброшена.")
+    except Exception as e:
+        print(f"Ошибка при сбросе базы данных: {str(e)}")
+
+@app.cli.command("clean-all")
+def clean_all():
+    """Полная очистка базы данных и миграций."""
+    try:
+        
+        migrations_dir = os.path.join(os.path.dirname(__file__), 'migrations')
+        if os.path.exists(migrations_dir):
+            shutil.rmtree(migrations_dir)
+            print("Папка migrations удалена.")
+
+        
+        db_path = os.path.join(os.path.dirname(__file__), 'instance', 'inventory.db')
+        if os.path.exists(db_path):
+            os.remove(db_path)
+            print("База данных удалена.")
+
+        
+        with app.app_context():
+            db.create_all()
+            print("Таблицы созданы заново.")
+
+        print("Очистка завершена успешно.")
+    except Exception as e:
+        print(f"Ошибка при очистке: {str(e)}")
+
+@app.route('/admin/unassign_item/<int:item_id>', methods=['POST'])
+@login_required
+def unassign_item(item_id):
+    if current_user.role != 'admin':
+        return redirect(url_for('index'))
+
+    try:
+        quantity = int(request.form.get('quantity', 1))
+        item = InventoryItem.query.get_or_404(item_id)
+        
+        if quantity > item.quantity:
+            flash('Количество для открепления превышает назначенное количество', 'error')
+            return redirect(url_for('assigned_inventory'))
+            
+        if quantity == item.quantity:
+           
+            item.assigned_to = None
+        else:
+            
+            item.quantity -= quantity
+            
+            
+            new_item = InventoryItem(
+                name=item.name,
+                quantity=quantity,
+                status='новый',
+                assigned_to=None
+            )
+            db.session.add(new_item)
+            
+        db.session.commit()
+        flash('Инвентарь успешно откреплен', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Произошла ошибка при откреплении инвентаря: {str(e)}', 'error')
+        
+    return redirect(url_for('assigned_inventory'))
+
+@app.cli.command("check-db")
+def check_db():
+    """Проверка состояния базы данных."""
+    with app.app_context():
+        try:
+            
+            db.session.execute(text('SELECT 1'))
+            print("Подключение к БД работает")
+            
+            
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
+            print(f"Существующие таблицы: {tables}")
+            
+            
+            items_count = InventoryItem.query.count()
+            users_count = User.query.count()
+            print(f"Количество элементов инвентаря: {items_count}")
+            print(f"Количество пользователей: {users_count}")
+            
+            
+            assigned_items = InventoryItem.query.filter(
+                InventoryItem.assigned_to.isnot(None)
+            ).all()
+            print(f"Закрепленных элементов: {len(assigned_items)}")
+            
+            for item in assigned_items:
+                print(f"ID: {item.id}, Название: {item.name}, "
+                      f"Закреплен за: {item.assigned_username}")
+                
+        except Exception as e:
+            print(f"Ошибка при проверке БД: {str(e)}")
+
+@app.cli.command("add-username-column")
+def add_username_column():
+    """Добавление колонки assigned_username в таблицу inventory_item."""
+    try:
+        with app.app_context():
+            
+            inspector = inspect(db.engine)
+            columns = [col['name'] for col in inspector.get_columns('inventory_item')]
+            
+            if 'assigned_username' not in columns:
+                
+                with db.engine.begin() as conn:
+                    conn.execute(text(
+                        'ALTER TABLE inventory_item ADD COLUMN assigned_username VARCHAR(80)'
+                    ))
+                print("Колонка assigned_username успешно добавлена")
+                
+                
+                items = InventoryItem.query.filter(InventoryItem.assigned_to.isnot(None)).all()
+                for item in items:
+                    user = User.query.get(item.assigned_to)
+                    if user:
+                        item.assigned_username = user.username
+                db.session.commit()
+                print("Значения assigned_username обновлены")
+            else:
+                print("Колонка assigned_username уже существует")
+                
+    except Exception as e:
+        print(f"Ошибка при добавлении колонки: {str(e)}")
+        db.session.rollback()
+
+@app.route('/admin/assign_items', methods=['POST'])
+@login_required
+def assign_items():
+    if current_user.role != 'admin':
+        flash('У вас нет прав для выполнения этого действия', 'danger')
+        return redirect(url_for('index'))
+    
+    try:
+        user_id = request.form.get('user_id')
+        item_ids = request.form.getlist('item_ids')
+        
+        if not user_id or not item_ids:
+            flash('Не указан пользователь или элементы', 'danger')
+            return redirect(url_for('admin_dashboard'))
+        
+        user = User.query.get(user_id)
+        if not user:
+            flash('Пользователь не найден', 'danger')
+            return redirect(url_for('admin_dashboard'))
+        
+        for item_id in item_ids:
+            item = InventoryItem.query.get(item_id)
+            if item:
+                item.assigned_to = user_id
+                item.status = 'используемый'  
+                
+                
+                history = AssignmentHistory(
+                    item_id=item.id,
+                    user_id=user_id,
+                    action='assigned',
+                    admin_id=current_user.id
+                )
+                db.session.add(history)
+        
+        db.session.commit()
+        flash('Элементы успешно назначены', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in assign_items: {str(e)}")
+        flash('Произошла ошибка при назначении элементов', 'danger')
+    
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/report_broken/<int:item_id>', methods=['POST'])
+@login_required
+def report_broken(item_id):
+    if not current_user.is_authenticated:
+        flash('Пожалуйста, войдите в систему', 'warning')
+        return redirect(url_for('login'))
+    
+    try:
+        item = InventoryItem.query.get_or_404(item_id)
+        
+        if not item:
+            flash('Элемент не найден', 'danger')
+            return redirect(url_for('my_inventory'))
+        
+        if item.assigned_to != current_user.id:
+            flash('У вас нет прав для выполнения этого действия', 'danger')
+            return redirect(url_for('my_inventory'))
+        
+        
+        item.status = 'сломанный'
+        
+        db.session.commit()
+        flash('Статус элемента изменен на "сломанный"', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error in report_broken: {str(e)}")
+        flash('Произошла ошибка при изменении статуса', 'danger')
+    
+    return redirect(url_for('my_inventory'))
+
+@app.route('/create_report')
+@login_required
+def create_report_page():
+    if current_user.role != 'user':
+        flash('Доступ запрещен', 'danger')
+        return redirect(url_for('admin_dashboard'))
+    
+    assigned_inventory = InventoryItem.query.filter_by(
+        assigned_to=current_user.id,
+        is_hidden=False
+    ).all()
+    
+    return render_template(
+        'user/create_report.html',
+        assigned_inventory=assigned_inventory
+    )
+
+@app.route('/create_inventory_report', methods=['POST'])
+@login_required
+def create_inventory_report():
+    if current_user.role != 'user':
+        flash('Доступ запрещен', 'danger')
+        return redirect(url_for('admin_dashboard'))
+
+    try:
+        inventory_id = request.form.get('inventory_id')
+        quantity = int(request.form.get('quantity', 1))
+        reason = request.form.get('reason')
+
+        if not inventory_id or not reason:
+            flash('Все поля должны быть заполнены', 'danger')
+            return redirect(url_for('create_report_page'))
+
+        inventory_item = InventoryItem.query.get(inventory_id)
+        
+        if not inventory_item or inventory_item.assigned_to != current_user.id:
+            flash('Инвентарь не найден или не закреплен за вами', 'danger')
+            return redirect(url_for('create_report_page'))
+        
+        if quantity > inventory_item.quantity:
+            flash(f'Недостаточно инвентаря. Доступно: {inventory_item.quantity}', 'danger')
+            return redirect(url_for('create_report_page'))
+
+        report = Report(
+            user_id=current_user.id,
+            inventory_id=int(inventory_id),
+            quantity=quantity,
+            reason=reason,
+            report_type='status',
+            status='broken'
+        )
+        
+        inventory_item.status = 'сломанный'
+        
+        db.session.add(report)
+        db.session.commit()
+        
+        flash('Отчет о поломке успешно создан', 'success')
+        return redirect(url_for('user_dashboard'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash('Произошла ошибка при создании отчета', 'danger')
+        print(f"Error: {str(e)}")
+        return redirect(url_for('create_report_page'))
+
+@app.route('/unassign_my_item/<int:item_id>', methods=['POST'])
+@login_required
+def unassign_my_item(item_id):
+    try:
+        item = InventoryItem.query.get_or_404(item_id)
+        
+        if item.assigned_to != current_user.id:
+            flash('У вас нет прав на открепление этого предмета', 'error')
+            return redirect(url_for('my_inventory'))
+            
+        item.assigned_to = None
+        db.session.commit()
+        
+        flash('Инвентарь успешно откреплен', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Произошла ошибка при откреплении инвентаря: {str(e)}', 'error')
+        
+    return redirect(url_for('my_inventory'))
 
 if __name__ == '__main__':
     init_db()

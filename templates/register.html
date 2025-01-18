@@ -14,32 +14,56 @@
                         <p class="text-muted">Создайте новую учетную запись</p>
                     </div>
 
-                    <form method="POST" class="fade-in-section">
-                        <div class="mb-4">
-                            <label for="username" class="form-label">
-                                <i class="fas fa-user me-2"></i>Имя пользователя
-                            </label>
-                            <input type="text" 
-                                   class="form-control form-control-lg" 
-                                   id="username" 
-                                   name="username" 
-                                   required 
-                                   placeholder="Введите имя пользователя">
+                    <form method="POST" action="{{ url_for('register') }}">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Имя пользователя</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="username" 
+                                       name="username" 
+                                       required 
+                                       placeholder="Введите имя пользователя">
+                            </div>
                         </div>
-                        <div class="mb-4">
-                            <label for="password" class="form-label">
-                                <i class="fas fa-lock me-2"></i>Пароль
-                            </label>
-                            <input type="password" 
-                                   class="form-control form-control-lg" 
-                                   id="password" 
-                                   name="password" 
-                                   required 
-                                   placeholder="Введите пароль">
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Пароль</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="password" 
+                                       name="password" 
+                                       required 
+                                       placeholder="Введите пароль">
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
+
+                        <div class="mb-4">
+                            <label for="confirm_password" class="form-label">Подтверждение пароля</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="confirm_password" 
+                                       name="confirm_password" 
+                                       required 
+                                       placeholder="Подтвердите пароль">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 mb-3">
                             <i class="fas fa-user-plus me-2"></i>Зарегистрироваться
                         </button>
+
                         <div class="text-center">
                             <p class="mb-0">Уже есть аккаунт? 
                                 <a href="{{ url_for('login') }}" class="text-primary">Войти</a>
@@ -54,48 +78,41 @@
 
 <style>
     .form-custom {
-        border-radius: 15px;
         border: none;
-        box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
     }
 
     .form-control {
-        border-radius: 10px;
-        border: 2px solid #e2e8f0;
         padding: 0.75rem 1rem;
-        transition: all 0.3s ease;
+        border-radius: 10px;
+    }
+
+    .input-group-text {
+        background-color: transparent;
+        border-right: none;
     }
 
     .form-control:focus {
         border-color: #6366f1;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+        box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
     }
 
     .btn-primary {
-        background: linear-gradient(45deg, #6366f1, #8b5cf6);
-        border: none;
+        padding: 0.75rem;
         border-radius: 10px;
-        padding: 0.75rem 1.5rem;
-        font-weight: 500;
         transition: all 0.3s ease;
     }
 
     .btn-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-    }
-
-    .text-primary {
-        color: #6366f1 !important;
-    }
-
-    .form-label {
-        font-weight: 500;
-        color: #4b5563;
+        box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
     }
 
     .fade-in-section {
-        animation: fadeIn 0.6s ease-out;
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeIn 0.6s ease-out forwards;
     }
 
     @keyframes fadeIn {

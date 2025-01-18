@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}План закупок{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header-section text-center mb-5">
+        <h2 class="display-4 mb-4">
+            <i class="fas fa-shopping-cart me-3"></i>
+            План закупок
+        </h2>
+        <p class="lead text-muted">Отчет о планируемых закупках инвентаря</p>
+    </div>
+
+    <div class="card shadow-hover">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-custom fade-in-section">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-hashtag me-2"></i>ID</th>
+                            <th><i class="fas fa-box me-2"></i>Название</th>
+                            <th><i class="fas fa-sort-numeric-up me-2"></i>Количество</th>
+                            <th><i class="fas fa-truck me-2"></i>Поставщик</th>
+                            <th><i class="fas fa-info-circle me-2"></i>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for plan in purchases %}
+                        <tr class="fade-in-section" data-animation-delay="{{ loop.index }}">
+                            <td>{{ plan.id }}</td>
+                            <td>{{ plan.item_name }}</td>
+                            <td>{{ plan.quantity }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-building me-2"></i>
+                                    {{ plan.supplier }}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge {% if plan.status == 'pending' %}bg-warning{% else %}bg-success{% endif %}">
+                                    {{ plan.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-2x mb-3 d-block"></i>
+                                План закупок пока пуст
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-info text-white">
+                    <i class="fas fa-arrow-left me-2"></i>Вернуться в панель управления
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.shadow-hover {
+    transition: box-shadow 0.3s ease;
+    border: none;
+    border-radius: 15px;
+}
+
+.shadow-hover:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.table-custom {
+    margin-bottom: 0;
+}
+
+.table-custom thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    padding: 1rem;
+    font-weight: 600;
+}
+
+.table-custom td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.fade-in-section {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeIn 0.6s ease forwards;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+tr.fade-in-section {
+    animation-delay: calc(0.1s * var(--animation-delay, 1));
+}
+
+.badge {
+    padding: 0.5em 0.8em;
+    font-weight: 500;
+}
+
+.display-4 {
+    font-weight: 600;
+}
+
+.lead {
+    font-size: 1.1rem;
+}
+
+.btn {
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+}
+</style>
+{% endblock %} 

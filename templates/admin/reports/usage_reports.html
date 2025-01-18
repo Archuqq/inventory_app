@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Использование инвентаря{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header-section text-center mb-5">
+        <h2 class="display-4 mb-4">
+            <i class="fas fa-box me-3"></i>
+            Использование инвентаря
+        </h2>
+        <p class="lead text-muted">Отчет об использовании и назначении инвентаря</p>
+    </div>
+
+    <div class="card shadow-hover">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-custom fade-in-section">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-hashtag me-2"></i>ID</th>
+                            <th><i class="fas fa-box me-2"></i>Название</th>
+                            <th><i class="fas fa-sort-numeric-up me-2"></i>Количество</th>
+                            <th><i class="fas fa-info-circle me-2"></i>Статус</th>
+                            <th><i class="fas fa-user me-2"></i>Пользователь</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inventory_usage %}
+                        <tr class="fade-in-section" data-animation-delay="{{ loop.index }}">
+                            <td>{{ item.id }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>
+                                <div class="status-badge status-pending">
+                                    <i class="fas fa-clock me-2"></i>
+                                    <span>Используемый</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user-circle me-2"></i>
+                                    {{ item.username }}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-2x mb-3 d-block"></i>
+                                Данных об использовании инвентаря пока нет
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Вернуться в панель управления
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.shadow-hover {
+    transition: box-shadow 0.3s ease;
+    border: none;
+    border-radius: 15px;
+}
+
+.shadow-hover:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.table-custom {
+    margin-bottom: 0;
+}
+
+.table-custom thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    padding: 1rem;
+    font-weight: 600;
+}
+
+.table-custom td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+
+.fade-in-section {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeIn 0.6s ease forwards;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+tr.fade-in-section {
+    animation-delay: calc(0.1s * var(--animation-delay, 1));
+}
+
+.badge {
+    padding: 0.5em 0.8em;
+    font-weight: 500;
+}
+
+.display-4 {
+    font-weight: 600;
+}
+
+.lead {
+    font-size: 1.1rem;
+}
+
+.btn {
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+}
+
+.gradient-orange {
+    background: linear-gradient(45deg, #ff9a44 0%, #fc6076 100%);
+    color: white;
+    border: none;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: white;
+}
+
+.status-rejected {
+    background-color: rgb(239, 68, 68);
+}
+
+.status-approved {
+    background-color: rgb(34, 197, 94);
+}
+
+.status-pending {
+    background-color: rgb(234, 179, 8);
+}
+</style>
+{% endblock %} 

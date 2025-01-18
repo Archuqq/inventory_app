@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Создание отчета о поломке{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="card-title text-center mb-4">
+                        <i class="fas fa-file-alt text-primary me-2"></i>
+                        Создание отчета о поломке
+                    </h2>
+                    
+                    <form method="POST" action="{{ url_for('create_inventory_report') }}">
+                        <div class="mb-4">
+                            <label for="inventory_id" class="form-label fw-bold">Выберите инвентарь:</label>
+                            <select class="form-select form-select-lg" id="inventory_id" name="inventory_id" required>
+                                <option value="" disabled selected>Выберите элемент из списка</option>
+                                {% for item in assigned_inventory %}
+                                    <option value="{{ item.id }}" data-quantity="{{ item.quantity }}">
+                                        {{ item.name }} (Доступно: {{ item.quantity }} шт.)
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Выберите инвентарь, который требует ремонта</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="quantity" class="form-label fw-bold">Количество сломанных единиц:</label>
+                            <input type="number" class="form-control form-control-lg" id="quantity" 
+                                   name="quantity" min="1" value="1" required>
+                            <div class="invalid-feedback">
+                                Количество превышает доступное
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="reason" class="form-label fw-bold">Причина поломки:</label>
+                            <textarea class="form-control form-control-lg" id="reason" 
+                                      name="reason" rows="4" required></textarea>
+                            <div class="form-text">Подробно опишите причину поломки и обстоятельства</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                Отправить отчет
+                            </button>
+                            <a href="{{ url_for('user_dashboard') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Вернуться в панель управления
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inventorySelect = document.getElementById('inventory_id');
+    const quantityInput = document.getElementById('quantity');
+    
+    function updateQuantityLimit() {
+        const selectedOption = inventorySelect.options[inventorySelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const maxQuantity = parseInt(selectedOption.dataset.quantity);
+            quantityInput.max = maxQuantity;
+            
+            // Проверяем текущее значение
+            if (parseInt(quantityInput.value) > maxQuantity) {
+                quantityInput.value = maxQuantity;
+            }
+        }
+    }
+    
+    inventorySelect.addEventListener('change', updateQuantityLimit);
+    
+    quantityInput.addEventListener('input', function() {
+        const maxQuantity = parseInt(this.max);
+        const currentValue = parseInt(this.value);
+        
+        if (currentValue > maxQuantity) {
+            this.value = maxQuantity;
+            this.classList.add('is-invalid');
+        } else {
+            this.classList.remove('is-invalid');
+        }
+    });
+});
+</script>
+
+<style>
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.form-control-lg, .form-select-lg {
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.25rem;
+}
+
+.form-text {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.invalid-feedback {
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

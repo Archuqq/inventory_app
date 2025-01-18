@@ -30,6 +30,102 @@
                 </div>
             </div>
             {% endfor %}
+
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-file-alt text-primary me-2"></i>
+                            Создать отчет о поломке
+                        </h5>
+                        <p class="card-text text-muted">
+                            Сообщите о поломке закрепленного за вами инвентаря
+                        </p>
+                        <a href="{{ url_for('create_report_page') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Создать отчет
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- Модальное окно для создания отчета -->
+    <div class="modal fade" id="createReportModal" tabindex="-1" aria-labelledby="createReportModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createReportModalLabel">Создание отчета о поломке</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="{{ url_for('create_inventory_report') }}">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="inventory_id" class="form-label">Выберите инвентарь:</label>
+                            <select class="form-select" id="inventory_id" name="inventory_id" required>
+                                <option value="" disabled selected>Выберите элемент</option>
+                                {% for item in assigned_inventory %}
+                                    <option value="{{ item.id }}" data-quantity="{{ item.quantity }}">
+                                        {{ item.name }} (Количество: {{ item.quantity }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">Количество сломанных единиц:</label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" 
+                                   min="1" value="1" required>
+                            <div class="invalid-feedback">
+                                Количество превышает доступное
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reason" class="form-label">Причина поломки:</label>
+                            <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Создать отчет</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const inventorySelect = document.getElementById('inventory_id');
+        const quantityInput = document.getElementById('quantity');
+        
+        function updateQuantityLimit() {
+            const selectedOption = inventorySelect.options[inventorySelect.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                const maxQuantity = parseInt(selectedOption.dataset.quantity);
+                quantityInput.max = maxQuantity;
+                
+                // Проверяем текущее значение
+                if (parseInt(quantityInput.value) > maxQuantity) {
+                    quantityInput.value = maxQuantity;
+                }
+            }
+        }
+        
+        inventorySelect.addEventListener('change', updateQuantityLimit);
+        
+        quantityInput.addEventListener('input', function() {
+            const maxQuantity = parseInt(this.max);
+            const currentValue = parseInt(this.value);
+            
+            if (currentValue > maxQuantity) {
+                this.value = maxQuantity;
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    });
+    </script>
 {% endblock %}

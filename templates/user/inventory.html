@@ -43,27 +43,10 @@
                                 <td>{{ item.name }}</td>
                                 <td>{{ item.quantity }}</td>
                                 <td>
-                                    {% if item.status == 'новый' %}
-                                        <div class="status-badge status-approved">
-                                            <i class="fas fa-check-circle me-2"></i>
-                                            <span>Новый</span>
-                                        </div>
-                                    {% elif item.status == 'используемый' %}
-                                        <div class="status-badge status-pending">
-                                            <i class="fas fa-clock me-2"></i>
-                                            <span>Используемый</span>
-                                        </div>
-                                    {% elif item.status == 'сломанный' %}
-                                        <div class="status-badge status-rejected">
-                                            <i class="fas fa-times-circle me-2"></i>
-                                            <span>Сломанный</span>
-                                        </div>
-                                    {% else %}
-                                        <div class="status-badge status-pending">
-                                            <i class="fas fa-question-circle me-2"></i>
-                                            <span>{{ item.status }}</span>
-                                        </div>
-                                    {% endif %}
+                                    <div class="status-badge status-approved">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        <span>Новый</span>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="btn-group">
@@ -82,7 +65,7 @@
         </div>
 
         <div class="text-center mt-4">
-            <a href="{{ url_for('user_dashboard') }}" class="btn btn-secondary btn-lg">
+            <a href="{{ url_for('user_dashboard') }}" class="btn btn-outline-secondary btn-lg">
                 <i class="fas fa-arrow-left me-2"></i>Назад в панель управления
             </a>
         </div>
