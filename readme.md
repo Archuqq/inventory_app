@@ -29,7 +29,8 @@ cd inventory_app
 ### 2. Создание виртуального окружения:
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate #Linux
+.venv\Scripts\activate #Windows
 ```
 ### 3. Установка зависимостей:
 ```bash
